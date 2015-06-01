@@ -312,6 +312,41 @@ function wc_minimum_order_amount() {
     }
 }
 
+add_action( 'woocommerce_check_cart_items', 'my_check_cost_of_bookings', 20 );
+
+function my_check_cost_of_bookings() {
+// Only run in the Cart or Checkout pages
+    if ( is_cart() || is_checkout() ) {
+    $bookable_total = $bookable_minimum = 0;
+        foreach ( WC()->cart->get_cart() as $cart_item_key => $cart_item ) {
+            if ( isset( $cart_item['booking'] ) ) {//the cart contains a bookable product
+                $quantity = $cart_item['quantity'];
+                $_product = apply_filters( 'woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key );
+                $bookable_minimum = 20;
+                $price = $_product->get_price();
+                $taxable = $_product->is_taxable();
+            if ( $taxable ) {
+                if ( WC()->cart->tax_display_cart == 'excl' ) {
+                    $product_subtotal = $_product->get_price_excluding_tax( $quantity );
+                } else {
+                    $product_subtotal = $_product->get_price_including_tax( $quantity );
+                }
+            // Non-taxable
+            } else {
+                $product_subtotal = $price * $quantity;
+            }
+                $bookable_total += $product_subtotal;
+                if ( $bookable_total >= $bookable_minimum ) {
+                    return;
+                }
+            }
+        }
+        if ( $bookable_total > $bookable_minimum ) {
+            wc_add_notice( sprintf( '<strong>A Minimum of %s %s is required before checking out.</strong>' . '<br />Current cart\'s total: %s %s', $bookable_minimum, get_option( 'woocommerce_currency'), $bookable_total,get_option( 'woocommerce_currency') ), 'error' );
+        }
+    }
+}
+
 function add_menu_icons_styles(){
 
 	echo '<style>
